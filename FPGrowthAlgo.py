@@ -61,27 +61,23 @@ def freq_pattern_set(transactions,freq,min_sup,size):
         Liste chaînée triée par ordre décroissant de fréquence contenant les items fréquents
     """
     L=HashMap(size)
-    current_bucket=freq.table.head
-    while current_bucket:
-        bucket=current_bucket.element
-        node=bucket.head
-        while node:
-            k=node.element.key
-            v=node.element.value
-            if v>=min_sup:
-                L.put(k,v)
-            node=node.next
-        current_bucket=current_bucket.next
+    for bucket in freq.table:
+        if not bucket.is_empty():
+            node=bucket.head
+            while node:
+                k=node.element.key
+                v=node.element.value
+                if v>=min_sup:
+                    L.put(k,v)
+                node=node.next
     
     freq_list=LinkedList()
-    current_bucket=L.table.head
-    while current_bucket:
-        bucket=current_bucket.element
-        node=bucket.head
-        while node:
-            freq_list.add_last(node.element)
-            node=node.next
-        current_bucket=current_bucket.next
+    for bucket in L.table:
+        if not bucket.is_empty():
+            node=bucket.head
+            while node:
+                freq_list.add_last(node.element)
+                node=node.next
     
     LinkedList.tri_insertion_desc(freq_list)
     return freq_list

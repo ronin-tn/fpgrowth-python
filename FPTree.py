@@ -60,6 +60,9 @@ class FPTree:
             child=current_node.find_child(current_item.element)
             if child:
                 child.count+=1
+                header_node=self.header_table.get(child.item)
+                if header_node:
+                    header_node.count+=1
             else:
                 new_node=FPNode(current_item.element,1,current_node)
                 current_node.add_child(new_node)
