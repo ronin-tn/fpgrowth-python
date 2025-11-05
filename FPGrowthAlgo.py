@@ -1,24 +1,45 @@
+"""
+Module contenant l'implémentation de l'algorithme FP-Growth pour la découverte de patterns fréquents.
+"""
+
 from LinkedList import LinkedList
 from HashMap import HashMap
 
 def add_transaction(transactions,*items):
+    """
+    Ajoute une nouvelle transaction à la liste de transactions.
+    
+    Args:
+        transactions: Liste chaînée contenant toutes les transactions
+        *items: Items à ajouter à la nouvelle transaction
+    """
     trans=LinkedList()
     for item in items:
         trans.add_last(item)
     transactions.add_last(trans)
 
 def calculate_freq(transactions,size):
+    """
+    Calcule la fréquence de chaque item dans l'ensemble de transactions.
+    
+    Args:
+        transactions: Liste chaînée contenant toutes les transactions
+        size: Taille de la table de hachage pour stocker les fréquences
+    
+    Returns:
+        HashMap contenant chaque item comme clé et sa fréquence comme valeur
+    """
     freq=HashMap(size)
     current_trans=transactions.head
     while current_trans:
-        seen_items=HashMap(size)## bch ken item yetchef fi nafs transaction man3wdoch ne7sboh
+        seen_items=HashMap(size)
         current_item=current_trans.element.head
         while current_item:
             item=current_item.element
             if not seen_items.contains_key(item):
                 seen_items.put(item,True)
                 if freq.contains_key(item):
-                    freq.put(item,freq.get(item) + 1)
+                    freq.put(item,freq.get(item)+1)
                 else:
                     freq.put(item,1)
             current_item=current_item.next
@@ -27,7 +48,18 @@ def calculate_freq(transactions,size):
 
 
 def freq_pattern_set(transactions,freq,min_sup,size):
-    ##ay wehd ikon value min support nzidoh fi table
+    """
+    Filtre les items fréquents selon le seuil de support minimal et les trie par ordre décroissant.
+    
+    Args:
+        transactions: Liste chaînée contenant toutes les transactions
+        freq: HashMap contenant les fréquences de chaque item
+        min_sup: Seuil de support minimal
+        size: Taille de la table de hachage
+    
+    Returns:
+        Liste chaînée triée par ordre décroissant de fréquence contenant les items fréquents
+    """
     L=HashMap(size)
     current_bucket=freq.table.head
     while current_bucket:
@@ -36,12 +68,11 @@ def freq_pattern_set(transactions,freq,min_sup,size):
         while node:
             k=node.element.key
             v=node.element.value
-            if v >= min_sup:
+            if v>=min_sup:
                 L.put(k,v)
             node=node.next
         current_bucket=current_bucket.next
     
-    # najoutiwhom fi liste
     freq_list=LinkedList()
     current_bucket=L.table.head
     while current_bucket:
@@ -52,19 +83,27 @@ def freq_pattern_set(transactions,freq,min_sup,size):
             node=node.next
         current_bucket=current_bucket.next
     
-    # lista lezmha n3mlolha tri bch n5rjo frequent pattern base
-    freq_list.tri_insertion_desc()
+    LinkedList.tri_insertion_desc(freq_list)
     return freq_list
 
 
 
 def ordered_itemsets(transactions,freq_list):
+    """
+    Réordonne les items de chaque transaction selon l'ordre de fréquence décroissante.
+    
+    Args:
+        transactions: Liste chaînée contenant toutes les transactions
+        freq_list: Liste chaînée des items fréquents triés par ordre décroissant
+    
+    Returns:
+        Liste chaînée contenant les transactions avec items réordonnés
+    """
     ordered_itemsets=LinkedList()
     current_trans=transactions.head
     while current_trans:
         transaction_items=current_trans.element
         ordered_items=LinkedList()
-        # kel3ada dima nzido seen items bch mayt3wdoch fi nafs transaction
         seen_items=HashMap(50)
         freq_node=freq_list.head
         while freq_node:
@@ -87,9 +126,18 @@ def ordered_itemsets(transactions,freq_list):
 
 
 def get_prefix(node):
+    """
+    Récupère le préfixe (chemin depuis la racine) d'un nœud dans l'arbre FP.
+    
+    Args:
+        node: Le nœud FPNode dont on veut obtenir le préfixe
+    
+    Returns:
+        Liste chaînée contenant les items du préfixe dans l'ordre de la racine au nœud
+    """
     reverse_prefix=LinkedList()
     current=node.parent
-    while current and current.item != "NULL":
+    while current and current.item!="NULL":
         reverse_prefix.add_last(current.item)
         current=current.parent
     prefix=LinkedList()
@@ -101,7 +149,23 @@ def get_prefix(node):
 
 
 def conditional_pattern_base(fptree,size):
+    """
+    Construit la base de patterns conditionnels pour chaque item dans la table d'en-tête.
+    
+    Pour chaque item, collecte tous les préfixes (chemins depuis la racine) des nœuds
+    contenant cet item, avec leur compte associé.
+    
+    Args:
+        fptree: L'arbre FP pour lequel construire la base de patterns conditionnels
+        size: Taille de la table de hachage
+    
+    Returns:
+        HashMap où chaque clé est un item et la valeur est une liste de chemins avec leur compte
+    """
     class CheminCount:
+        """
+        Classe interne pour stocker un chemin avec son compte.
+        """
         def __init__(self,chemin,count):
             self.chemin=chemin
             self.count=count
@@ -109,28 +173,22 @@ def conditional_pattern_base(fptree,size):
             return f"({self.chemin},{self.count})"
     
     cpb=HashMap(size)
-    # jib items kol mn header table
     keys=fptree.header_table.keys()
     current_key=keys.head
     while current_key:
         item=current_key.element
         header_node=fptree.header_table.get(item)
-        #nsajlo prefixes t3 item kol fi lista 
         prefixes=LinkedList()
         current_node=header_node.first_node
         while current_node:
-            # lahne rana njibo fi prefix wehd mt3 node, rodbelk dima tdhakrha
             prefix=get_prefix(current_node)
             
-            #najoutiw chemin ken ki yebda prefix mahoch null
             if not prefix.is_empty():
                 chemin_count=CheminCount(prefix,current_node.count)
                 prefixes.add_last(chemin_count)
             
-            # lahne t3ada lnafs item ama fi chemin ekhr
             current_node=current_node.node_link
         
-        #ajouti prefies l conditional pattern base (hashmap)
         if not prefixes.is_empty():
             cpb.put(item,prefixes)
         
@@ -138,8 +196,13 @@ def conditional_pattern_base(fptree,size):
     
     return cpb
 
-## hedhy method bch tprinti cpb
 def print_cpb(cpb):
+    """
+    Affiche la base de patterns conditionnels de manière lisible.
+    
+    Args:
+        cpb: HashMap contenant la base de patterns conditionnels
+    """
     keys=cpb.keys()
     current_key=keys.head
     while current_key:

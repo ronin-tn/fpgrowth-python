@@ -1,47 +1,55 @@
+"""
+Script principal pour tester l'algorithme FP-Growth.
+Découvre tous les patterns fréquents dans un ensemble de transactions.
+"""
 
 from LinkedList import *
 from HashMap import *
 from FPGrowthAlgo import *
 from FPTree import *
 
-transactions=LinkedList()
+print("=== Algorithme FP-Growth ===\n")
 
-add_transaction(transactions,"E", "K", "M", "N", "O", "Y")  # T1
-add_transaction(transactions,"D", "E", "K", "N", "O", "Y")  # T2
-add_transaction(transactions,"A", "E", "K", "M")            # T3
-add_transaction(transactions,"K", "M", "Y")                 # T4
-add_transaction(transactions,"C", "E", "I", "K", "O", "O")  # T5
+transactions = LinkedList()
 
-##size men 3andna
-size=50
-freq=calculate_freq(transactions,size)
+add_transaction(transactions, "E", "K", "M", "N", "O", "Y")
+add_transaction(transactions, "D", "E", "K", "N", "O", "Y")
+add_transaction(transactions, "A", "E", "K", "M")
+add_transaction(transactions, "K", "M", "Y")
+add_transaction(transactions, "C", "E", "I", "K", "O", "O")
 
-min_sup=3
+size = 50
+min_sup = 3
 
-freq_list=freq_pattern_set(transactions,freq,min_sup,size)
+print(f"Seuil de support minimal: {min_sup}")
+print(f"Nombre de transactions: {len(transactions)}\n")
 
-print("Frequent Pattern Set:")
-current=freq_list.head
+freq = calculate_freq(transactions, size)
+
+freq_list = freq_pattern_set(transactions, freq, min_sup, size)
+
+print("Items fréquents (triés par ordre décroissant):")
+current = freq_list.head
 while current:
-    print(f"{current.element.key} : {current.element.value}")
-    current=current.next
+    print(f"  {current.element.key} : {current.element.value}")
+    current = current.next
+print()
 
-ordered_itemsets=ordered_itemsets(transactions,freq_list)
+ordered_itemsets = ordered_itemsets(transactions, freq_list)
 
-print("Ordered-Item-Sets:")
-t=1
-current=ordered_itemsets.head
+print("Transactions réordonnées selon la fréquence:")
+t = 1
+current = ordered_itemsets.head
 while current:
-    print(f"T{t}: {current.element}")
-    current=current.next
+    print(f"  T{t}: {current.element}")
+    current = current.next
     t += 1
+print()
 
-
-#FPTree
-tree=FPTree()
+tree = FPTree()
 for itemset in ordered_itemsets:
     tree.insert(itemset)
 
-print("Conditional Pattern Base:")
-cpb=conditional_pattern_base(tree,size)
+print("Base de patterns conditionnels:")
+cpb = conditional_pattern_base(tree, size)
 print_cpb(cpb)
