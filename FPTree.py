@@ -2,12 +2,18 @@
 Implémentation de l'arbre FP (Frequent Pattern Tree) pour l'algorithme FP-Growth.
 """
 
+from Tree import Tree
 from FPNode import FPNode
 from HashMap import *
 
-class FPTree:
+class FPTree(Tree):
     """
     Frequent Pattern Tree utilisé pour stocker les transactions de manière compacte.
+    
+    Hérite de Tree et ajoute des fonctionnalités spécifiques à FP-Growth:
+    - Table d'en-tête pour accès rapide aux noeuds
+    - Insertion de transactions avec comptage de fréquences
+    - Liens entre noeuds contenant le même item
     
     L'arbre FP permet de partager les préfixes communs entre transactions,
     reduisant ainsi l'espace memoire nécessaire. La table (header_table)
@@ -20,7 +26,8 @@ class FPTree:
         Args:
             capacity: Capacité de la table d'en-tête (HashMap)
         """
-        self.root=FPNode("NULL",0)
+        root_node=FPNode("NULL",0)
+        super().__init__(root_node=root_node)
         self.header_table=HashMap(capacity)
     
     class HeaderNode:
