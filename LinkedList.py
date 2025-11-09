@@ -197,7 +197,7 @@ class LinkedList:
         Les éléments doivent avoir un attribut 'value' pour la comparaison.
         
         Args:
-            linkedlist: La liste chaînée à trier (modifiée en place)
+            linkedlist: La liste chainée à trier (modifiée en place)
         """
         if linkedlist.head is None or linkedlist.head.next is None:
             return
@@ -221,6 +221,7 @@ class LinkedList:
         while temp.next:
             temp=temp.next
         linkedlist.tail=temp
+
 
     def __iter__(self):
         """

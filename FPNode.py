@@ -12,6 +12,8 @@ class FPNode(TreeNode):
     - Compte (fréquence) de l'item
     - node_link pour lier tous les noeuds contenant le meme item
     """
+    __slots__=('item','count','node_link')
+    
     def __init__(self,item=None,count=1,parent=None):
         """
         Initialise un noeud FP avec un item, un compte et un parent.

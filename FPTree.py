@@ -19,6 +19,8 @@ class FPTree(Tree):
     reduisant ainsi l'espace memoire nécessaire. La table (header_table)
     permet un accès rapide à tous les noeuds contenant un item spécifique.
     """
+    __slots__=('header_table',)
+    
     def __init__(self,capacity=50):
         """
         Initialise un arbre FP vide avec une racine et une table d'en-tête.
