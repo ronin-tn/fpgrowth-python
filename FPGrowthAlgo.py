@@ -207,3 +207,364 @@ def print_cpb(cpb):
         print(f"{key} : {value}")
         current_key=current_key.next
 
+
+def build_conditional_fptree(cpb_for_item, min_sup, size=50):
+    """
+    Construit un arbre FP conditionnel à partir d'une base de patterns conditionnels.
+    
+    Args:
+        cpb_for_item: LinkedList de CheminCount (prefix, count) pour un item
+        min_sup: Seuil de support minimal
+        size: Taille de la table de hachage
+    
+    Returns:
+        FPTree: Un nouvel arbre FP conditionnel, ou None si vide
+    """
+    from FPTree import FPTree
+    
+    freq=HashMap(size)
+    current=cpb_for_item.head
+    while current:
+        chemin_count=current.element
+        prefix=chemin_count.chemin
+        count=chemin_count.count
+        
+        item_node=prefix.head
+        while item_node:
+            item=item_node.element
+            if freq.contains_key(item):
+                freq.put(item, freq.get(item) + count)
+            else:
+                freq.put(item, count)
+            item_node=item_node.next
+        current=current.next
+    
+    freq_items=HashMap(size)
+    for bucket in freq.table:
+        if not bucket.is_empty():
+            node=bucket.head
+            while node:
+                if node.element.value >= min_sup:
+                    freq_items.put(node.element.key, node.element.value)
+                node=node.next
+    
+    if freq_items.size == 0:
+        return None
+    
+    freq_list=LinkedList()
+    for bucket in freq_items.table:
+        if not bucket.is_empty():
+            node=bucket.head
+            while node:
+                freq_list.add_last(node.element)
+                node=node.next
+    LinkedList.tri_insertion_desc(freq_list)
+    
+    conditional_tree=FPTree(size)
+    
+    current=cpb_for_item.head
+    while current:
+        chemin_count=current.element
+        prefix=chemin_count.chemin
+        count=chemin_count.count
+        
+        ordered_path=LinkedList()
+        freq_node=freq_list.head
+        while freq_node:
+            item=freq_node.element.key
+            path_node=prefix.head
+            while path_node:
+                if path_node.element == item:
+                    ordered_path.add_last(item)
+                    break
+                path_node=path_node.next
+            freq_node=freq_node.next
+        
+        if not ordered_path.is_empty():
+            for _ in range(count):
+                conditional_tree.insert(ordered_path)
+        
+        current=current.next
+    
+    if conditional_tree.header_table.size == 0:
+        return None
+    
+    return conditional_tree
+
+
+def get_header_items_ascending(fptree):
+    """
+    Récupère les items de la table header triés par ordre croissant de fréquence.
+    
+    Args:
+        fptree: L'arbre FP
+    
+    Returns:
+        LinkedList: Items triés par ordre croissant de fréquence
+    """
+    items_list=LinkedList()
+    keys=fptree.header_table.keys()
+    current_key=keys.head
+    while current_key:
+        item=current_key.element
+        header_node=fptree.header_table.get(item)
+        
+        class ItemCount:
+            def __init__(self, key, value):
+                self.key=key
+                self.value=value
+        
+        items_list.add_last(ItemCount(item, header_node.count))
+        current_key=current_key.next
+    
+    LinkedList.tri_insertion_desc(items_list)
+    
+    reversed_list=LinkedList()
+    current=items_list.head
+    while current:
+        reversed_list.add_first(current.element.key)
+        current=current.next
+    
+    return reversed_list
+
+
+def fp_growth(fptree, prefix, min_sup, frequent_patterns, size=50, depth=0, verbose=False):
+    """
+    Algorithme FP-Growth récursif pour découvrir tous les patterns fréquents.
+    
+    Args:
+        fptree: L'arbre FP (ou arbre FP conditionnel)
+        prefix: Préfixe courant (LinkedList d'items)
+        min_sup: Seuil de support minimal
+        frequent_patterns: Liste pour stocker les patterns découverts (LinkedList)
+        size: Taille des tables de hachage
+        depth: Profondeur de récursion (pour affichage)
+        verbose: Si True, affiche les étapes de l'algorithme
+    """
+    class FrequentPattern:
+        """Classe pour stocker un pattern fréquent avec son support."""
+        def __init__(self, pattern, support):
+            self.pattern=pattern
+            self.support=support
+        
+        def __str__(self):
+            return f"({self.pattern}, support={self.support})"
+    
+    indent="  " * depth
+    
+    items=get_header_items_ascending(fptree)
+    
+    current_item=items.head
+    while current_item:
+        item=current_item.element
+        header_node=fptree.header_table.get(item)
+        support=header_node.count
+        
+        new_pattern=LinkedList()
+        prefix_node=prefix.head
+        while prefix_node:
+            new_pattern.add_last(prefix_node.element)
+            prefix_node=prefix_node.next
+        new_pattern.add_last(item)
+        
+        if verbose:
+            print(f"{indent}Mining item '{item}' with support {support}")
+            print(f"{indent}  Pattern found: {new_pattern}")
+        
+        frequent_patterns.add_last(FrequentPattern(new_pattern, support))
+        
+        cpb=conditional_pattern_base_for_item(fptree, item, size)
+        
+        if cpb is not None and not cpb.is_empty():
+            if verbose:
+                print(f"{indent}  Building conditional FP-Tree for '{item}'")
+            
+            conditional_tree=build_conditional_fptree(cpb, min_sup, size)
+            
+            if conditional_tree is not None:
+                if verbose:
+                    print(f"{indent}  Conditional tree has {conditional_tree.header_table.size} items")
+                
+                fp_growth(conditional_tree, new_pattern, min_sup, frequent_patterns, size, depth + 1, verbose)
+        
+        current_item=current_item.next
+
+
+def conditional_pattern_base_for_item(fptree, item, size):
+    """
+    Construit la base de patterns conditionnels pour un item spécifique.
+    
+    Args:
+        fptree: L'arbre FP
+        item: L'item pour lequel construire la CPB
+        size: Taille de la table de hachage
+    
+    Returns:
+        LinkedList de CheminCount, ou None si l'item n'existe pas
+    """
+    class CheminCount:
+        def __init__(self, chemin, count):
+            self.chemin=chemin
+            self.count=count
+        def __str__(self):
+            return f"({self.chemin},{self.count})"
+    
+    header_node=fptree.header_table.get(item)
+    if header_node is None:
+        return None
+    
+    prefixes=LinkedList()
+    current_node=header_node.first_node
+    while current_node:
+        prefix=get_prefix(current_node)
+        if not prefix.is_empty():
+            prefixes.add_last(CheminCount(prefix, current_node.count))
+        current_node=current_node.node_link
+    
+    return prefixes
+
+
+def mine_frequent_patterns(transactions, min_sup, size=50, verbose=False):
+    """
+    Point d'entrée principal pour découvrir tous les itemsets fréquents.
+    
+    Args:
+        transactions: LinkedList contenant toutes les transactions
+        min_sup: Seuil de support minimal
+        size: Taille des tables de hachage
+        verbose: Si True, affiche les étapes de l'algorithme
+    
+    Returns:
+        LinkedList de FrequentPattern (pattern, support)
+    """
+    from FPTree import FPTree
+    
+    if verbose:
+        print("=" * 60)
+        print("ETAPE 1: Calcul des frequences")
+        print("=" * 60)
+    
+    freq=calculate_freq(transactions, size)
+    
+    if verbose:
+        print("Frequences calculees:")
+        keys=freq.keys()
+        current=keys.head
+        while current:
+            print(f"  {current.element}: {freq.get(current.element)}")
+            current=current.next
+        print()
+    
+    if verbose:
+        print("=" * 60)
+        print("ETAPE 2: Filtrage et tri des items frequents")
+        print("=" * 60)
+    
+    freq_list=freq_pattern_set(transactions, freq, min_sup, size)
+    
+    if verbose:
+        print("Items frequents (tries par ordre decroissant):")
+        current=freq_list.head
+        while current:
+            print(f"  {current.element.key}: {current.element.value}")
+            current=current.next
+        print()
+    
+    if verbose:
+        print("=" * 60)
+        print("ETAPE 3: Reordonnement des transactions")
+        print("=" * 60)
+    
+    ordered=ordered_itemsets(transactions, freq_list)
+    
+    if verbose:
+        t=1
+        current=ordered.head
+        while current:
+            print(f"  T{t}: {current.element}")
+            current=current.next
+            t += 1
+        print()
+    
+    if verbose:
+        print("=" * 60)
+        print("ETAPE 4: Construction de l'arbre FP")
+        print("=" * 60)
+    
+    tree=FPTree(size)
+    for itemset in ordered:
+        tree.insert(itemset)
+    
+    if verbose:
+        print("Arbre FP construit avec succes")
+        print_fptree(tree)
+        print()
+    
+    if verbose:
+        print("=" * 60)
+        print("ETAPE 5: Extraction des patterns frequents (FP-Growth)")
+        print("=" * 60)
+    
+    frequent_patterns=LinkedList()
+    prefix=LinkedList()
+    
+    fp_growth(tree, prefix, min_sup, frequent_patterns, size, 0, verbose)
+    
+    if verbose:
+        print()
+        print("=" * 60)
+        print("RESULTAT FINAL")
+        print("=" * 60)
+    
+    return frequent_patterns
+
+
+def print_frequent_patterns(patterns):
+    """
+    Affiche tous les patterns fréquents de manière formatée.
+    
+    Args:
+        patterns: LinkedList de FrequentPattern
+    """
+    print("\n" + "=" * 50)
+    print("PATTERNS FREQUENTS DECOUVERTS")
+    print("=" * 50)
+    
+    count=0
+    current=patterns.head
+    while current:
+        pattern=current.element
+        items_str=str(pattern.pattern)
+        print(f"  {items_str} : support={pattern.support}")
+        count += 1
+        current=current.next
+    
+    print("=" * 50)
+    print(f"Total: {count} patterns frequents")
+    print("=" * 50)
+
+
+def print_fptree(fptree, node=None, indent=0):
+    """
+    Affiche une représentation visuelle de l'arbre FP.
+    
+    Args:
+        fptree: L'arbre FP à afficher
+        node: Noeud courant (None pour commencer à la racine)
+        indent: Niveau d'indentation
+    """
+    if node is None:
+        print("\n" + "=" * 40)
+        print("VISUALISATION FP-TREE")
+        print("=" * 40)
+        node=fptree.root
+        print(f"ROOT (NULL)")
+    
+    children_keys=node.children.keys()
+    current_child_key=children_keys.head
+    while current_child_key:
+        child=node.children.get(current_child_key.element)
+        prefix="  " * (indent + 1) + "+-- " if current_child_key.next else "  " * (indent + 1) + "`-- "
+        print(f"{prefix}{child.item}:{child.count}")
+        print_fptree(fptree, child, indent + 1)
+        current_child_key=current_child_key.next
